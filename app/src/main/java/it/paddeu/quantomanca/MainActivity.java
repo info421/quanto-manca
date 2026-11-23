@@ -205,9 +205,21 @@ public class MainActivity extends Activity {
         long now = System.currentTimeMillis();
         status.setText(list.isEmpty() ? "Nessun appuntamento nei prossimi " + EventRepo.DAYS_AHEAD + " giorni."
                 : "Prossimi appuntamenti");
-        int n = Math.min(10, list.size());
-        for (int i = 0; i < n; i++) {
-            Ev e = list.get(i);
+        List<Object> rows = WidgetService.rows(list);
+        int shown = 0;
+        for (Object o : rows) {
+            if (o instanceof String) {
+                TextView h = new TextView(this);
+                h.setText(((String) o).toUpperCase());
+                h.setTextSize(11);
+                h.setTypeface(Typeface.DEFAULT_BOLD);
+                h.setAlpha(0.6f);
+                h.setPadding(0, dp(14), 0, dp(2));
+                preview.addView(h);
+                continue;
+            }
+            if (shown++ >= 12) break;
+            Ev e = (Ev) o;
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setPadding(0, dp(8), 0, dp(8));
@@ -220,7 +232,7 @@ public class MainActivity extends Activity {
             mid.setOrientation(LinearLayout.VERTICAL);
             mid.setPadding(dp(10), 0, dp(8), 0);
             TextView t = new TextView(this);
-            t.setText(e.title);
+            t.setText((e.important ? "⭐ " : "") + e.title);
             t.setTextSize(15);
             t.setTypeface(Typeface.DEFAULT_BOLD);
             TextView w = new TextView(this);

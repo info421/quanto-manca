@@ -49,7 +49,8 @@ public final class EventRepo {
                 CalendarContract.Instances.SELF_ATTENDEE_STATUS,
                 CalendarContract.Instances.OWNER_ACCOUNT,
                 CalendarContract.Instances.CALENDAR_DISPLAY_NAME,
-                CalendarContract.Instances.CALENDAR_ACCESS_LEVEL
+                CalendarContract.Instances.CALENDAR_ACCESS_LEVEL,
+                CalendarContract.Instances.EVENT_COLOR_KEY
         };
         String sel = CalendarContract.Instances.VISIBLE + "=1";
 
@@ -67,6 +68,16 @@ public final class EventRepo {
                 Ev e = new Ev();
                 e.eventId = cur.getLong(0);
                 e.title = cur.isNull(1) ? "" : cur.getString(1).trim();
+                if (e.title.startsWith("!")) {
+                    e.important = true;
+                    e.title = e.title.replaceFirst("^!+\\s*", "");
+                }
+                if (e.title.contains("⭐")) {
+                    e.important = true;
+                    e.title = e.title.replace("⭐", "").trim();
+                }
+                String colorKey = cur.isNull(11) ? "" : cur.getString(11);
+                if ("11".equals(colorKey)) e.important = true;   // Google Calendar: Pomodoro (rosso)
                 if (e.title.isEmpty()) e.title = "(senza titolo)";
                 e.rawBegin = cur.getLong(2);
                 e.rawEnd = cur.getLong(3);

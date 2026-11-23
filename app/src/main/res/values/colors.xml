@@ -4,5 +4,6 @@
     <color name="item_bg">#FFF1F0EC</color>
     <color name="ink">#FF1B1B1F</color>
     <color name="muted">#FF6C6C75</color>
+    <color name="item_important_bg">#FFFFF6D9</color>
     <color name="icon_bg">#FF1B1B1F</color>
 </resources>
