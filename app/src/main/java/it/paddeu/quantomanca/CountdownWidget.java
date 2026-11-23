@@ -35,10 +35,23 @@ public class CountdownWidget extends AppWidgetProvider {
         super.onReceive(c, i);
         String a = i.getAction();
         if (a == null) return;
+        if (ACTION_TICK.equals(a) || Intent.ACTION_BOOT_COMPLETED.equals(a)) {
+            // controllo aggiornamenti in background (al massimo ogni 6 ore), poi ridisegno
+            final PendingResult pr = goAsync();
+            final Context app = c.getApplicationContext();
+            new Thread(() -> {
+                try {
+                    Updater.check(app, false);
+                    updateAll(app);
+                    schedule(app);
+                } finally {
+                    pr.finish();
+                }
+            }).start();
+            return;
+        }
         switch (a) {
-            case ACTION_TICK:
             case ACTION_REFRESH:
-            case Intent.ACTION_BOOT_COMPLETED:
             case Intent.ACTION_TIME_CHANGED:
             case Intent.ACTION_TIMEZONE_CHANGED:
             case Intent.ACTION_LOCALE_CHANGED:
@@ -105,6 +118,8 @@ public class CountdownWidget extends AppWidgetProvider {
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         rv.setOnClickPendingIntent(R.id.header_title, piOpen);
         rv.setOnClickPendingIntent(R.id.empty, piOpen);
+        rv.setOnClickPendingIntent(R.id.upd, piOpen);
+        rv.setViewVisibility(R.id.upd, Updater.available(c) ? android.view.View.VISIBLE : android.view.View.GONE);
 
         // + Nuovo appuntamento → schermata "Nuovo evento" del calendario
         Intent ins = new Intent(Intent.ACTION_INSERT)

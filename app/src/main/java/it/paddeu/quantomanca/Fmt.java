@@ -67,6 +67,9 @@ public final class Fmt {
     public static String when(Ev e) {
         String d = new SimpleDateFormat("EEE d MMM", IT).format(new Date(e.begin));
         String s = e.allDay ? d + " · tutto il giorno" : d + " · " + hm(e.begin);
+        if (e.sharedWith != null && !e.sharedWith.isEmpty()) {
+            s += e.sharedByAttendees ? " · condiviso con " + e.sharedWith : " · condiviso · " + e.sharedWith;
+        }
         if (e.location != null && !e.location.isEmpty()) s += " · " + e.location;
         return s;
     }

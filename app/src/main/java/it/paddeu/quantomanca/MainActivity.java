@@ -7,8 +7,10 @@ import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.CalendarContract;
+import android.provider.Settings;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.Button;
@@ -25,6 +27,10 @@ public class MainActivity extends Activity {
     private static final int REQ_CAL = 7;
 
     private Button permBtn;
+    private LinearLayout updBox;
+    private TextView updText;
+    private Button updBtn;
+    private boolean installing = false;
     private TextView status;
     private LinearLayout preview;
 
@@ -56,6 +62,26 @@ public class MainActivity extends Activity {
         info.setPadding(0, dp(8), 0, dp(18));
         root.addView(info);
 
+        // Riquadro aggiornamento (nascosto finché non c'è una versione nuova)
+        updBox = new LinearLayout(this);
+        updBox.setOrientation(LinearLayout.VERTICAL);
+        updBox.setPadding(dp(14), dp(12), dp(14), dp(12));
+        updBox.setBackgroundColor(Fmt.BLUE);
+        updText = new TextView(this);
+        updText.setTextColor(0xFFFFFFFF);
+        updText.setTextSize(15);
+        updText.setTypeface(Typeface.DEFAULT_BOLD);
+        updBox.addView(updText);
+        updBtn = new Button(this);
+        updBtn.setText("Aggiorna adesso");
+        updBtn.setOnClickListener(v -> startUpdate());
+        updBox.addView(updBtn);
+        updBox.setVisibility(View.GONE);
+        LinearLayout.LayoutParams ulp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        ulp.bottomMargin = dp(16);
+        root.addView(updBox, ulp);
+
         permBtn = new Button(this);
         permBtn.setText("Consenti accesso al calendario");
         permBtn.setOnClickListener(v -> requestPermissions(new String[]{Manifest.permission.READ_CALENDAR}, REQ_CAL));
@@ -86,6 +112,13 @@ public class MainActivity extends Activity {
         preview.setOrientation(LinearLayout.VERTICAL);
         root.addView(preview);
 
+        TextView ver = new TextView(this);
+        ver.setText("Versione " + BuildConfig.VERSION_NAME);
+        ver.setTextSize(11);
+        ver.setPadding(0, dp(24), 0, 0);
+        ver.setAlpha(0.6f);
+        root.addView(ver);
+
         setContentView(sv);
     }
 
@@ -93,6 +126,54 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         refresh();
+        showUpdate();
+        new Thread(() -> {
+            Updater.check(getApplicationContext(), true);
+            runOnUiThread(() -> { showUpdate(); CountdownWidget.updateAll(this); });
+        }).start();
+    }
+
+    private void showUpdate() {
+        if (installing) return;
+        if (Updater.available(this)) {
+            String n = Updater.latestName(this);
+            updText.setText("Nuova versione disponibile" + (n.isEmpty() ? "" : " (" + n + ")"));
+            updBtn.setEnabled(true);
+            updBtn.setText("Aggiorna adesso");
+            updBox.setVisibility(View.VISIBLE);
+        } else {
+            updBox.setVisibility(View.GONE);
+        }
+    }
+
+    private void startUpdate() {
+        if (installing) return;
+        if (!getPackageManager().canRequestPackageInstalls()) {
+            Toast.makeText(this, "Attiva «Consenti da questa fonte», poi torna indietro e tocca di nuovo Aggiorna",
+                    Toast.LENGTH_LONG).show();
+            try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:" + getPackageName())));
+            } catch (ActivityNotFoundException ignored) {}
+            return;
+        }
+        installing = true;
+        updBtn.setEnabled(false);
+        updBtn.setText("Scarico…");
+        new Thread(() -> Updater.downloadAndInstall(getApplicationContext(), new Updater.Progress() {
+            @Override public void onProgress(int p) {
+                runOnUiThread(() -> updBtn.setText("Scarico… " + p + "%"));
+            }
+            @Override public void onError(String m) {
+                runOnUiThread(() -> {
+                    installing = false;
+                    Toast.makeText(MainActivity.this, m, Toast.LENGTH_LONG).show();
+                    showUpdate();
+                });
+            }
+        })).start();
+        // al termine del download Android mostra la conferma di installazione
+        updBtn.postDelayed(() -> { installing = false; }, 60_000);
     }
 
     @Override

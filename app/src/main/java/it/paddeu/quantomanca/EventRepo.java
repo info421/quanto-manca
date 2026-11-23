@@ -46,7 +46,11 @@ public final class EventRepo {
                 CalendarContract.Instances.ALL_DAY,
                 CalendarContract.Instances.EVENT_LOCATION,
                 CalendarContract.Instances.STATUS,
-                CalendarContract.Instances.SELF_ATTENDEE_STATUS
+                CalendarContract.Instances.SELF_ATTENDEE_STATUS,
+                CalendarContract.Instances.OWNER_ACCOUNT,
+                CalendarContract.Instances.ACCOUNT_NAME,
+                CalendarContract.Instances.CALENDAR_DISPLAY_NAME,
+                CalendarContract.Instances.CALENDAR_ACCESS_LEVEL
         };
         String sel = CalendarContract.Instances.VISIBLE + "=1";
 
@@ -79,6 +83,18 @@ public final class EventRepo {
                 }
                 if (e.end <= e.begin) e.end = e.begin + 60_000;
                 if (e.end <= now) continue;   // già finito
+
+                String owner = cur.isNull(8) ? "" : cur.getString(8);
+                String account = cur.isNull(9) ? "" : cur.getString(9);
+                String calName = cur.isNull(10) ? "" : cur.getString(10);
+                int access = cur.isNull(11) ? 0 : cur.getInt(11);
+                e.sharedWith = attendees(c, e.eventId, owner, account);
+                if (!e.sharedWith.isEmpty()) {
+                    e.sharedByAttendees = true;
+                } else if (isOthersCalendar(owner, account, access)) {
+                    e.sharedWith = calName.isEmpty() ? owner : calName;
+                    e.sharedByAttendees = false;
+                }
                 out.add(e);
             }
         } catch (SecurityException ignored) {
@@ -90,6 +106,45 @@ public final class EventRepo {
         Collections.sort(out, (x, y) -> Long.compare(x.begin, y.begin));
         if (out.size() > MAX_ITEMS) return new ArrayList<>(out.subList(0, MAX_ITEMS));
         return out;
+    }
+
+    /** Calendario di un'altra persona (condiviso con te), escluse festività e calendari automatici. */
+    private static boolean isOthersCalendar(String owner, String account, int access) {
+        if (owner == null || owner.isEmpty()) return false;
+        if (owner.equalsIgnoreCase(account)) return false;
+        if (owner.contains("#") || owner.endsWith("calendar.google.com")) return false;  // festività, compleanni…
+        return access < CalendarContract.Calendars.CAL_ACCESS_OWNER;
+    }
+
+    /** Nomi degli invitati (te escluso): "Elisabetta, Marco +2". Vuoto se non ci sono altri. */
+    private static String attendees(Context c, long eventId, String owner, String account) {
+        String[] proj = {
+                CalendarContract.Attendees.ATTENDEE_NAME,
+                CalendarContract.Attendees.ATTENDEE_EMAIL
+        };
+        List<String> names = new ArrayList<>();
+        Cursor a = null;
+        try {
+            a = CalendarContract.Attendees.query(c.getContentResolver(), eventId, proj);
+            if (a == null) return "";
+            while (a.moveToNext()) {
+                String name = a.isNull(0) ? "" : a.getString(0).trim();
+                String mail = a.isNull(1) ? "" : a.getString(1).trim();
+                if (!mail.isEmpty() && (mail.equalsIgnoreCase(owner) || mail.equalsIgnoreCase(account))) continue;
+                if (mail.endsWith("resource.calendar.google.com")) continue;   // sale, risorse
+                String shown;
+                if (!name.isEmpty()) shown = name.split("\\s+")[0];            // solo il nome
+                else if (mail.contains("@")) shown = mail.substring(0, mail.indexOf('@'));
+                else continue;
+                if (!names.contains(shown)) names.add(shown);
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (a != null) a.close();
+        }
+        if (names.isEmpty()) return "";
+        if (names.size() <= 2) return String.join(", ", names);
+        return names.get(0) + ", " + names.get(1) + " +" + (names.size() - 2);
     }
 
     /** Gli eventi di tutto il giorno sono salvati a mezzanotte UTC: li riporto alla mezzanotte locale. */

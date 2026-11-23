@@ -12,4 +12,8 @@ public class Ev {
     public long rawBegin;
     public long rawEnd;
     public boolean allDay;
+    /** "Elisabetta, Marco" se ci sono invitati, oppure il nome del calendario condiviso; vuoto se è solo tuo. */
+    public String sharedWith = "";
+    /** true = invitati (condiviso con…), false = calendario di un altro (condiviso · nome). */
+    public boolean sharedByAttendees;
 }

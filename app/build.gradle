@@ -3,6 +3,7 @@ plugins {
 }
 
 def runNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
+def updateRepo = System.getenv("GITHUB_REPOSITORY") ?: ""
 
 android {
     namespace 'it.paddeu.quantomanca'
@@ -14,6 +15,11 @@ android {
         targetSdk 34
         versionCode runNumber
         versionName "1.0.${runNumber}"
+        buildConfigField "String", "UPDATE_REPO", "\"${updateRepo}\""
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     signingConfigs {
