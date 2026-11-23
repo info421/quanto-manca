@@ -144,7 +144,7 @@ public class CountdownWidget extends AppWidgetProvider {
 
         rv.setTextViewText(R.id.updated,
                 "Aggiornato alle " + new SimpleDateFormat("HH:mm", Locale.ITALIAN).format(new Date())
-                + "\n☆ Tocca la stellina per mettere un impegno in cima");
+                + "\n★ Gli importanti si scelgono dall'app con la stellina");
         return rv;
     }
 }

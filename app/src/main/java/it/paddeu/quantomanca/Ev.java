@@ -14,6 +14,8 @@ public class Ev {
     public boolean allDay;
     /** Segnato come importante: titolo che inizia con "!" o con ⭐, oppure colore rosso Pomodoro. */
     public boolean important;
+    /** Il calendario permette di modificarlo/eliminarlo. */
+    public boolean canEdit;
     /** "Elisabetta, Marco" se ci sono invitati, oppure il nome del calendario condiviso; vuoto se è solo tuo. */
     public String sharedWith = "";
     /** true = invitati (condiviso con…), false = calendario di un altro (condiviso · nome). */

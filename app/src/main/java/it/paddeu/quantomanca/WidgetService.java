@@ -74,23 +74,17 @@ public class WidgetService extends RemoteViewsService {
             }
 
             Ev e = (Ev) o;
-            RemoteViews rv = new RemoteViews(c.getPackageName(),
-                    e.important ? R.layout.widget_item_important : R.layout.widget_item);
+            RemoteViews rv = new RemoteViews(c.getPackageName(), R.layout.widget_item);
             int col = Fmt.color(e, now);
 
-            rv.setTextViewText(R.id.title, e.title);
-            rv.setTextViewText(R.id.star, e.important ? "★" : "☆");
-            rv.setTextColor(R.id.star, e.important ? 0xFFE0A800 : 0xFF8E8E96);
-            Intent star = new Intent();
-            star.setData(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, e.eventId));
-            star.putExtra(OpenEventActivity.EXTRA_STAR_KEY, Stars.key(e));
-            star.putExtra(OpenEventActivity.EXTRA_STAR_WAS, e.important);
-            rv.setOnClickFillInIntent(R.id.star, star);
+            rv.setTextViewText(R.id.title, (e.important ? "★ " : "") + e.title);
             rv.setTextViewText(R.id.meta, Fmt.when(e));
             rv.setTextViewText(R.id.big, (Fmt.live(e, now) ? "● " : "") + Fmt.big(e, now));
             rv.setTextColor(R.id.big, col);
             rv.setTextViewText(R.id.small, Fmt.small(e, now));
             rv.setInt(R.id.bar, "setBackgroundColor", col);
+            // importanti: sfondo tinto con il colore di urgenza
+            rv.setInt(R.id.bgimg, "setColorFilter", e.important ? Fmt.tint(col) : 0);
 
             Intent fill = new Intent();
             fill.setData(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, e.eventId));
@@ -101,7 +95,7 @@ public class WidgetService extends RemoteViewsService {
         }
 
         @Override public RemoteViews getLoadingView() { return null; }
-        @Override public int getViewTypeCount() { return 3; }
+        @Override public int getViewTypeCount() { return 2; }
         @Override public long getItemId(int pos) { return pos; }
         @Override public boolean hasStableIds() { return false; }
     }

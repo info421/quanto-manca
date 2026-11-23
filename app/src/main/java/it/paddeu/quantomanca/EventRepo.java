@@ -97,6 +97,7 @@ public final class EventRepo {
                 String owner = cur.isNull(8) ? "" : cur.getString(8);
                 String calName = cur.isNull(9) ? "" : cur.getString(9);
                 int access = cur.isNull(10) ? 0 : cur.getInt(10);
+                e.canEdit = access >= CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR;
                 e.sharedWith = attendees(c, e.eventId, owner);
                 if (!e.sharedWith.isEmpty()) {
                     e.sharedByAttendees = true;

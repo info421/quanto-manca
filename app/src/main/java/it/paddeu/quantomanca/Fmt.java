@@ -74,6 +74,15 @@ public final class Fmt {
         return s;
     }
 
+    /** Versione chiara (pastello) del colore, per lo sfondo degli importanti. */
+    public static int tint(int col) {
+        float k = 0.20f;
+        int r = (int) (255 + (((col >> 16) & 0xFF) - 255) * k);
+        int g = (int) (255 + (((col >> 8) & 0xFF) - 255) * k);
+        int b = (int) (255 + ((col & 0xFF) - 255) * k);
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
+    }
+
     public static int color(Ev e, long now) {
         double h = (e.begin - now) / 3_600_000.0;
         if (h < 24) return RED;

@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="widget_bg">#F2FFFFFF</color>
-    <color name="item_bg">#FFF1F0EC</color>
-    <color name="ink">#FF1B1B1F</color>
-    <color name="muted">#FF6C6C75</color>
-    <color name="item_important_bg">#FFFFF6D9</color>
-    <color name="icon_bg">#FF1B1B1F</color>
+    <!-- Stile chiaro, sempre (anche col tema scuro del telefono) -->
+    <color name="bg">#FFF5F4EF</color>
+    <color name="widget_bg">#F7F5F4EF</color>
+    <color name="card">#FFFFFFFF</color>
+    <color name="item_bg">#FFFFFFFF</color>
+    <color name="line">#FFE6E3DA</color>
+    <color name="ink">#FF1F1E1D</color>
+    <color name="muted">#FF75736C</color>
+    <color name="accent">#FFC96442</color>
+    <color name="icon_bg">#FFC96442</color>
 </resources>

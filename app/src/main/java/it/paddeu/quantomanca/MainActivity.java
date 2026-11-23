@@ -5,15 +5,17 @@ import android.app.Activity;
 import android.appwidget.AppWidgetManager;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
+import android.content.ContentUris;
 import android.content.Intent;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.CalendarContract;
 import android.provider.Settings;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -21,21 +23,51 @@ import android.widget.Toast;
 
 import java.util.List;
 
-/** Schermata dell'app: permesso al calendario, aggiunta del widget, anteprima. */
+/** Schermata dell'app: lista degli appuntamenti con stellina (importanti) ed eliminazione. */
 public class MainActivity extends Activity {
 
     private static final int REQ_CAL = 7;
 
-    private Button permBtn;
+    private static final int BG = 0xFFF5F4EF;
+    private static final int CARD = 0xFFFFFFFF;
+    private static final int LINE = 0xFFE6E3DA;
+    private static final int INK = 0xFF1F1E1D;
+    private static final int MUTED = 0xFF75736C;
+    private static final int ACCENT = 0xFFC96442;
+    private static final int GOLD = 0xFFE0A800;
+
+    private TextView permBtn;
     private LinearLayout updBox;
     private TextView updText;
-    private Button updBtn;
-    private boolean installing = false;
+    private TextView updBtn;
     private TextView status;
-    private LinearLayout preview;
+    private LinearLayout list;
+    private boolean installing = false;
 
-    private int dp(int v) {
+    private int dp(float v) {
         return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, getResources().getDisplayMetrics());
+    }
+
+    private GradientDrawable rounded(int fill, int stroke, float radius) {
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(fill);
+        g.setCornerRadius(dp(radius));
+        if (stroke != 0) g.setStroke(dp(1), stroke);
+        return g;
+    }
+
+    /** Pulsante a pillola: pieno (colore accento) o chiaro con bordo. */
+    private TextView pill(String text, boolean filled) {
+        TextView b = new TextView(this);
+        b.setText(text);
+        b.setTextSize(14);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setGravity(Gravity.CENTER);
+        b.setPadding(dp(16), dp(11), dp(16), dp(11));
+        b.setTextColor(filled ? 0xFFFFFFFF : INK);
+        b.setBackground(rounded(filled ? ACCENT : CARD, filled ? 0 : LINE, 22));
+        b.setClickable(true);
+        return b;
     }
 
     @Override
@@ -44,56 +76,24 @@ public class MainActivity extends Activity {
 
         ScrollView sv = new ScrollView(this);
         sv.setFitsSystemWindows(true);
+        sv.setBackgroundColor(BG);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(22), dp(28), dp(22), dp(28));
+        root.setPadding(dp(18), dp(18), dp(18), dp(28));
         sv.addView(root);
 
+        // Intestazione: titolo + pulsanti
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = new TextView(this);
         title.setText("Quanto manca");
-        title.setTextSize(30);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        root.addView(title);
+        title.setTextSize(26);
+        title.setTextColor(INK);
+        title.setTypeface(Typeface.create("serif", Typeface.NORMAL));
+        head.addView(title, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
-        TextView info = new TextView(this);
-        info.setText("I tuoi prossimi appuntamenti in ordine di quanto manca, in un widget sulla Home. "
-                + "Legge i calendari sincronizzati sul telefono (Google Calendar compreso).");
-        info.setTextSize(15);
-        info.setPadding(0, dp(8), 0, dp(18));
-        root.addView(info);
-
-        // Riquadro aggiornamento (nascosto finché non c'è una versione nuova)
-        updBox = new LinearLayout(this);
-        updBox.setOrientation(LinearLayout.VERTICAL);
-        updBox.setPadding(dp(14), dp(12), dp(14), dp(12));
-        updBox.setBackgroundColor(Fmt.BLUE);
-        updText = new TextView(this);
-        updText.setTextColor(0xFFFFFFFF);
-        updText.setTextSize(15);
-        updText.setTypeface(Typeface.DEFAULT_BOLD);
-        updBox.addView(updText);
-        updBtn = new Button(this);
-        updBtn.setText("Aggiorna adesso");
-        updBtn.setOnClickListener(v -> startUpdate());
-        updBox.addView(updBtn);
-        updBox.setVisibility(View.GONE);
-        LinearLayout.LayoutParams ulp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        ulp.bottomMargin = dp(16);
-        root.addView(updBox, ulp);
-
-        permBtn = new Button(this);
-        permBtn.setText("Consenti accesso al calendario");
-        permBtn.setOnClickListener(v -> requestPermissions(new String[]{Manifest.permission.READ_CALENDAR}, REQ_CAL));
-        root.addView(permBtn);
-
-        Button pin = new Button(this);
-        pin.setText("Aggiungi il widget alla Home");
-        pin.setOnClickListener(v -> pinWidget());
-        root.addView(pin);
-
-        Button add = new Button(this);
-        add.setText("+ Nuovo appuntamento");
+        TextView add = pill("+ Nuovo", true);
         add.setOnClickListener(v -> {
             try {
                 startActivity(new Intent(Intent.ACTION_INSERT).setData(CalendarContract.Events.CONTENT_URI));
@@ -101,22 +101,62 @@ public class MainActivity extends Activity {
                 Toast.makeText(this, "Nessuna app calendario trovata", Toast.LENGTH_LONG).show();
             }
         });
-        root.addView(add);
+        head.addView(add);
+        root.addView(head);
+
+        // Riquadro aggiornamento
+        updBox = new LinearLayout(this);
+        updBox.setOrientation(LinearLayout.HORIZONTAL);
+        updBox.setGravity(Gravity.CENTER_VERTICAL);
+        updBox.setPadding(dp(14), dp(10), dp(10), dp(10));
+        updBox.setBackground(rounded(0xFFFBEDE6, 0xFFF0CDBE, 14));
+        updText = new TextView(this);
+        updText.setTextColor(INK);
+        updText.setTextSize(13.5f);
+        updText.setTypeface(Typeface.DEFAULT_BOLD);
+        updBox.addView(updText, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        updBtn = pill("Aggiorna", true);
+        updBtn.setOnClickListener(v -> startUpdate());
+        updBox.addView(updBtn);
+        updBox.setVisibility(View.GONE);
+        LinearLayout.LayoutParams ulp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        ulp.topMargin = dp(14);
+        root.addView(updBox, ulp);
+
+        // Permesso
+        permBtn = pill("Consenti accesso al calendario", true);
+        permBtn.setOnClickListener(v -> requestPermissions(new String[]{
+                Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR}, REQ_CAL));
+        LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        plp.topMargin = dp(14);
+        root.addView(permBtn, plp);
 
         status = new TextView(this);
         status.setTextSize(13);
-        status.setPadding(0, dp(18), 0, dp(6));
+        status.setTextColor(MUTED);
+        status.setPadding(dp(2), dp(14), 0, 0);
         root.addView(status);
 
-        preview = new LinearLayout(this);
-        preview.setOrientation(LinearLayout.VERTICAL);
-        root.addView(preview);
+        list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        root.addView(list);
+
+        // Fondo: widget + versione
+        TextView pin = pill("Aggiungi il widget alla Home", false);
+        pin.setOnClickListener(v -> pinWidget());
+        LinearLayout.LayoutParams wlp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        wlp.topMargin = dp(22);
+        root.addView(pin, wlp);
 
         TextView ver = new TextView(this);
-        ver.setText("Versione " + BuildConfig.VERSION_NAME);
-        ver.setTextSize(11);
-        ver.setPadding(0, dp(24), 0, 0);
-        ver.setAlpha(0.6f);
+        ver.setText("☆ tocca la stellina per mettere un impegno in cima · ✕ per eliminarlo\nVersione " + BuildConfig.VERSION_NAME);
+        ver.setTextSize(11.5f);
+        ver.setTextColor(MUTED);
+        ver.setGravity(Gravity.CENTER);
+        ver.setPadding(0, dp(14), 0, 0);
         root.addView(ver);
 
         setContentView(sv);
@@ -133,13 +173,152 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    @Override
+    public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
+        super.onRequestPermissionsResult(code, perms, res);
+        refresh();
+    }
+
+    private void pinWidget() {
+        AppWidgetManager m = getSystemService(AppWidgetManager.class);
+        if (m != null && m.isRequestPinAppWidgetSupported()) {
+            m.requestPinAppWidget(new ComponentName(this, CountdownWidget.class), null, null);
+        } else {
+            Toast.makeText(this, "Tieni premuto sulla Home → Widget → Quanto manca", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void refresh() {
+        boolean ok = EventRepo.hasPermission(this);
+        permBtn.setVisibility(ok && EventActions.canWrite(this) ? View.GONE : View.VISIBLE);
+        list.removeAllViews();
+        if (!ok) {
+            status.setText("Serve il permesso di leggere il calendario.");
+            return;
+        }
+        CountdownWidget.updateAll(this);
+
+        List<Ev> evs = EventRepo.load(this);
+        long now = System.currentTimeMillis();
+        status.setText(evs.isEmpty() ? "Nessun appuntamento nei prossimi " + EventRepo.DAYS_AHEAD + " giorni." : "");
+        status.setVisibility(evs.isEmpty() ? View.VISIBLE : View.GONE);
+
+        for (Object o : WidgetService.rows(evs)) {
+            if (o instanceof String) {
+                TextView h = new TextView(this);
+                h.setText(((String) o).toUpperCase());
+                h.setTextSize(11.5f);
+                h.setLetterSpacing(0.08f);
+                h.setTypeface(Typeface.DEFAULT_BOLD);
+                h.setTextColor(MUTED);
+                h.setPadding(dp(4), dp(18), 0, dp(6));
+                list.addView(h);
+                continue;
+            }
+            list.addView(row((Ev) o, now));
+        }
+    }
+
+    private View row(Ev e, long now) {
+        int col = Fmt.color(e, now);
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(4), 0, dp(4));
+        row.setBackground(rounded(e.important ? Fmt.tint(col) : CARD, e.important ? 0 : LINE, 14));
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        rlp.bottomMargin = dp(8);
+        row.setLayoutParams(rlp);
+
+        // Stellina
+        TextView star = new TextView(this);
+        star.setText(e.important ? "★" : "☆");
+        star.setTextColor(e.important ? GOLD : 0xFFB5B2A8);
+        star.setTextSize(22);
+        star.setGravity(Gravity.CENTER);
+        final String k = Stars.key(e);
+        final boolean was = e.important;
+        star.setOnClickListener(v -> { Stars.toggle(this, k, was); refresh(); });
+        row.addView(star, new LinearLayout.LayoutParams(dp(46), dp(52)));
+
+        // Barra urgenza
+        View bar = new View(this);
+        bar.setBackground(rounded(col, 0, 2));
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(dp(4), dp(34));
+        blp.rightMargin = dp(10);
+        row.addView(bar, blp);
+
+        // Titolo + quando
+        LinearLayout mid = new LinearLayout(this);
+        mid.setOrientation(LinearLayout.VERTICAL);
+        mid.setPadding(0, dp(6), dp(6), dp(6));
+        TextView t = new TextView(this);
+        t.setText(e.title);
+        t.setTextSize(15);
+        t.setTextColor(INK);
+        t.setTypeface(Typeface.DEFAULT_BOLD);
+        TextView w = new TextView(this);
+        w.setText(Fmt.when(e));
+        w.setTextSize(12);
+        w.setTextColor(MUTED);
+        mid.addView(t);
+        mid.addView(w);
+        mid.setOnClickListener(v -> openEvent(e));
+        row.addView(mid, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        // Quanto manca
+        LinearLayout right = new LinearLayout(this);
+        right.setOrientation(LinearLayout.VERTICAL);
+        right.setGravity(Gravity.END);
+        TextView big = new TextView(this);
+        big.setText((Fmt.live(e, now) ? "● " : "") + Fmt.big(e, now));
+        big.setTextColor(col);
+        big.setTypeface(Typeface.DEFAULT_BOLD);
+        big.setTextSize(13.5f);
+        TextView small = new TextView(this);
+        small.setText(Fmt.small(e, now));
+        small.setTextColor(MUTED);
+        small.setTextSize(11.5f);
+        right.addView(big);
+        right.addView(small);
+        right.setOnClickListener(v -> openEvent(e));
+        row.addView(right);
+
+        // Elimina
+        TextView del = new TextView(this);
+        del.setText("✕");
+        del.setTextSize(15);
+        del.setGravity(Gravity.CENTER);
+        if (e.canEdit) {
+            del.setTextColor(0xFFA8A59C);
+            del.setOnClickListener(v -> EventActions.confirmDelete(this, e.eventId, e.rawBegin, e.title, this::refresh));
+        } else {
+            del.setTextColor(0x00000000);   // calendario di sola lettura: niente elimina
+        }
+        row.addView(del, new LinearLayout.LayoutParams(dp(40), dp(52)));
+
+        return row;
+    }
+
+    private void openEvent(Ev e) {
+        Intent view = new Intent(Intent.ACTION_VIEW,
+                ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, e.eventId));
+        view.putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, e.rawBegin);
+        view.putExtra(CalendarContract.EXTRA_EVENT_END_TIME, e.rawEnd);
+        try { startActivity(view); } catch (ActivityNotFoundException ignored) {}
+    }
+
+    // ---- Aggiornamenti ----
+
     private void showUpdate() {
         if (installing) return;
         if (Updater.available(this)) {
             String n = Updater.latestName(this);
-            updText.setText("Nuova versione disponibile" + (n.isEmpty() ? "" : " (" + n + ")"));
+            updText.setText("Nuova versione" + (n.isEmpty() ? "" : " " + n));
             updBtn.setEnabled(true);
-            updBtn.setText("Aggiorna adesso");
+            updBtn.setText("Aggiorna");
             updBox.setVisibility(View.VISIBLE);
         } else {
             updBox.setVisibility(View.GONE);
@@ -162,7 +341,7 @@ public class MainActivity extends Activity {
         updBtn.setText("Scarico…");
         new Thread(() -> Updater.downloadAndInstall(getApplicationContext(), new Updater.Progress() {
             @Override public void onProgress(int p) {
-                runOnUiThread(() -> updBtn.setText("Scarico… " + p + "%"));
+                runOnUiThread(() -> updBtn.setText(p + "%"));
             }
             @Override public void onError(String m) {
                 runOnUiThread(() -> {
@@ -172,98 +351,6 @@ public class MainActivity extends Activity {
                 });
             }
         })).start();
-        // al termine del download Android mostra la conferma di installazione
         updBtn.postDelayed(() -> { installing = false; }, 60_000);
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
-        super.onRequestPermissionsResult(code, perms, res);
-        refresh();
-    }
-
-    private void pinWidget() {
-        AppWidgetManager m = getSystemService(AppWidgetManager.class);
-        if (m != null && m.isRequestPinAppWidgetSupported()) {
-            m.requestPinAppWidget(new ComponentName(this, CountdownWidget.class), null, null);
-        } else {
-            Toast.makeText(this, "Tieni premuto sulla Home → Widget → Quanto manca", Toast.LENGTH_LONG).show();
-        }
-    }
-
-    private void refresh() {
-        boolean ok = EventRepo.hasPermission(this);
-        permBtn.setVisibility(ok ? View.GONE : View.VISIBLE);
-        preview.removeAllViews();
-        if (!ok) {
-            status.setText("Serve il permesso di leggere il calendario.");
-            return;
-        }
-        CountdownWidget.updateAll(this);
-
-        List<Ev> list = EventRepo.load(this);
-        long now = System.currentTimeMillis();
-        status.setText(list.isEmpty() ? "Nessun appuntamento nei prossimi " + EventRepo.DAYS_AHEAD + " giorni."
-                : "Prossimi appuntamenti");
-        List<Object> rows = WidgetService.rows(list);
-        int shown = 0;
-        for (Object o : rows) {
-            if (o instanceof String) {
-                TextView h = new TextView(this);
-                h.setText(((String) o).toUpperCase());
-                h.setTextSize(11);
-                h.setTypeface(Typeface.DEFAULT_BOLD);
-                h.setAlpha(0.6f);
-                h.setPadding(0, dp(14), 0, dp(2));
-                preview.addView(h);
-                continue;
-            }
-            if (shown++ >= 12) break;
-            Ev e = (Ev) o;
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setPadding(0, dp(8), 0, dp(8));
-
-            View bar = new View(this);
-            bar.setBackgroundColor(Fmt.color(e, now));
-            row.addView(bar, new LinearLayout.LayoutParams(dp(4), LinearLayout.LayoutParams.MATCH_PARENT));
-
-            TextView star = new TextView(this);
-            star.setText(e.important ? "★" : "☆");
-            star.setTextColor(e.important ? 0xFFE0A800 : 0xFF8E8E96);
-            star.setTextSize(24);
-            star.setGravity(android.view.Gravity.CENTER);
-            star.setPadding(dp(8), 0, dp(4), 0);
-            final String k = Stars.key(e);
-            final boolean was = e.important;
-            star.setOnClickListener(v -> {
-                Stars.toggle(this, k, was);
-                refresh();
-            });
-            row.addView(star, new LinearLayout.LayoutParams(dp(44), LinearLayout.LayoutParams.MATCH_PARENT));
-
-            LinearLayout mid = new LinearLayout(this);
-            mid.setOrientation(LinearLayout.VERTICAL);
-            mid.setPadding(dp(4), 0, dp(8), 0);
-            TextView t = new TextView(this);
-            t.setText(e.title);
-            t.setTextSize(15);
-            t.setTypeface(Typeface.DEFAULT_BOLD);
-            TextView w = new TextView(this);
-            w.setText(Fmt.when(e));
-            w.setTextSize(12);
-            mid.addView(t);
-            mid.addView(w);
-            row.addView(mid, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-
-            TextView big = new TextView(this);
-            big.setText(Fmt.big(e, now));
-            big.setTextColor(Fmt.color(e, now));
-            big.setTypeface(Typeface.DEFAULT_BOLD);
-            big.setTextSize(14);
-            row.addView(big);
-
-            preview.addView(row);
-        }
     }
 }
