@@ -44,4 +44,7 @@ jobs:
           gh release delete latest -y --cleanup-tag || true
           gh release create latest QuantoManca.apk version.json \
             --title "Quanto manca - versione 1.0.${{ github.run_number }}" \
-            --notes "Scarica QuantoManca.apk dal telefono e installalo."
+            --notes "Scarica QuantoManca.apk dal telefono e installalo." \
+            --latest
+          sleep 3
+          gh release edit latest --draft=false --latest
