@@ -228,11 +228,25 @@ public class MainActivity extends Activity {
             bar.setBackgroundColor(Fmt.color(e, now));
             row.addView(bar, new LinearLayout.LayoutParams(dp(4), LinearLayout.LayoutParams.MATCH_PARENT));
 
+            TextView star = new TextView(this);
+            star.setText(e.important ? "★" : "☆");
+            star.setTextColor(e.important ? 0xFFE0A800 : 0xFF8E8E96);
+            star.setTextSize(24);
+            star.setGravity(android.view.Gravity.CENTER);
+            star.setPadding(dp(8), 0, dp(4), 0);
+            final String k = Stars.key(e);
+            final boolean was = e.important;
+            star.setOnClickListener(v -> {
+                Stars.toggle(this, k, was);
+                refresh();
+            });
+            row.addView(star, new LinearLayout.LayoutParams(dp(44), LinearLayout.LayoutParams.MATCH_PARENT));
+
             LinearLayout mid = new LinearLayout(this);
             mid.setOrientation(LinearLayout.VERTICAL);
-            mid.setPadding(dp(10), 0, dp(8), 0);
+            mid.setPadding(dp(4), 0, dp(8), 0);
             TextView t = new TextView(this);
-            t.setText((e.important ? "⭐ " : "") + e.title);
+            t.setText(e.title);
             t.setTextSize(15);
             t.setTypeface(Typeface.DEFAULT_BOLD);
             TextView w = new TextView(this);

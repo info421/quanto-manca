@@ -112,6 +112,8 @@ public final class EventRepo {
             if (cur != null) cur.close();
         }
 
+        java.util.Set<String> on = Stars.on(c), off = Stars.off(c);
+        for (Ev e : out) Stars.apply(c, e, on, off);
         Collections.sort(out, (x, y) -> Long.compare(x.begin, y.begin));
         if (out.size() > MAX_ITEMS) return new ArrayList<>(out.subList(0, MAX_ITEMS));
         return out;

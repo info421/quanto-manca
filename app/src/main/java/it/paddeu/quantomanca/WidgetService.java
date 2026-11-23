@@ -29,7 +29,7 @@ public class WidgetService extends RemoteViewsService {
             out.addAll(rest);
             return out;
         }
-        out.add("⭐ Importanti");
+        out.add("★ Importanti");
         out.addAll(imp);
         if (!rest.isEmpty()) {
             out.add("Prossimi");
@@ -78,7 +78,14 @@ public class WidgetService extends RemoteViewsService {
                     e.important ? R.layout.widget_item_important : R.layout.widget_item);
             int col = Fmt.color(e, now);
 
-            rv.setTextViewText(R.id.title, (e.important ? "⭐ " : "") + e.title);
+            rv.setTextViewText(R.id.title, e.title);
+            rv.setTextViewText(R.id.star, e.important ? "★" : "☆");
+            rv.setTextColor(R.id.star, e.important ? 0xFFE0A800 : 0xFF8E8E96);
+            Intent star = new Intent();
+            star.setData(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, e.eventId));
+            star.putExtra(OpenEventActivity.EXTRA_STAR_KEY, Stars.key(e));
+            star.putExtra(OpenEventActivity.EXTRA_STAR_WAS, e.important);
+            rv.setOnClickFillInIntent(R.id.star, star);
             rv.setTextViewText(R.id.meta, Fmt.when(e));
             rv.setTextViewText(R.id.big, (Fmt.live(e, now) ? "● " : "") + Fmt.big(e, now));
             rv.setTextColor(R.id.big, col);
