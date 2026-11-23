@@ -7,9 +7,11 @@ import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.ContentUris;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.CalendarContract;
 import android.provider.Settings;
@@ -43,6 +45,7 @@ public class MainActivity extends Activity {
     private TextView status;
     private LinearLayout list;
     private boolean installing = false;
+    private boolean askedNotif = false;
 
     private int dp(float v) {
         return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, getResources().getDisplayMetrics());
@@ -151,8 +154,29 @@ public class MainActivity extends Activity {
         wlp.topMargin = dp(22);
         root.addView(pin, wlp);
 
+        TextView test = pill("Prova la notifica delle 8:30", false);
+        test.setOnClickListener(v -> {
+            if (!DailyReceiver.canNotify(this)) {
+                Toast.makeText(this, "Le notifiche sono disattivate: attivale nelle impostazioni dell'app", Toast.LENGTH_LONG).show();
+                try {
+                    startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName()));
+                } catch (ActivityNotFoundException ignored) {}
+                return;
+            }
+            new Thread(() -> {
+                int n = DailyReceiver.notifyNow(getApplicationContext());
+                if (n == 0) runOnUiThread(() -> Toast.makeText(this,
+                        "Nessun impegno con la stellina: metti una ★ e riprova", Toast.LENGTH_LONG).show());
+            }).start();
+        });
+        LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        tlp.topMargin = dp(10);
+        root.addView(test, tlp);
+
         TextView ver = new TextView(this);
-        ver.setText("☆ tocca la stellina per mettere un impegno in cima · ✕ per eliminarlo\nVersione " + BuildConfig.VERSION_NAME);
+        ver.setText("☆ tocca la stellina per mettere un impegno in cima · ✕ per eliminarlo\nOgni mattina alle 8:30 ricevi gli impegni con la stellina\nVersione " + BuildConfig.VERSION_NAME);
         ver.setTextSize(11.5f);
         ver.setTextColor(MUTED);
         ver.setGravity(Gravity.CENTER);
@@ -165,6 +189,13 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        DailyReceiver.schedule(this);
+        if (Build.VERSION.SDK_INT >= 33 && EventRepo.hasPermission(this)
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                && !askedNotif) {
+            askedNotif = true;
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 8);
+        }
         refresh();
         showUpdate();
         new Thread(() -> {

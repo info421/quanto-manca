@@ -63,6 +63,12 @@ public final class Fmt {
         return dd + " giorni";
     }
 
+    /** Data breve per la notifica: "gio 26 nov 10:00" o "gio 26 nov". */
+    public static String whenShort(Ev e) {
+        String d = new SimpleDateFormat("EEE d MMM", IT).format(new Date(e.begin));
+        return e.allDay ? d : d + " " + hm(e.begin);
+    }
+
     /** Riga sotto il titolo: "lun 24 nov · 11:00 · luogo". */
     public static String when(Ev e) {
         String d = new SimpleDateFormat("EEE d MMM", IT).format(new Date(e.begin));
