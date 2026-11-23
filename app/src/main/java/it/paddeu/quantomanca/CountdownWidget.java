@@ -143,7 +143,8 @@ public class CountdownWidget extends AppWidgetProvider {
         rv.setPendingIntentTemplate(R.id.list, piView);
 
         rv.setTextViewText(R.id.updated,
-                new SimpleDateFormat("HH:mm", Locale.ITALIAN).format(new Date()));
+                "Aggiornato alle " + new SimpleDateFormat("HH:mm", Locale.ITALIAN).format(new Date())
+                + "\n⭐ Per gli importanti: «!» all'inizio del titolo o colore rosso su Calendar");
         return rv;
     }
 }
