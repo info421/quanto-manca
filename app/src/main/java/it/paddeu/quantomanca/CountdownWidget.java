@@ -136,7 +136,8 @@ public class CountdownWidget extends AppWidgetProvider {
         rv.setOnClickPendingIntent(R.id.btn_refresh, piRef);
 
         // Tocco su un appuntamento → lo apre nel calendario
-        Intent view = new Intent(Intent.ACTION_VIEW).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        // (intent esplicito: Android 14 vieta i PendingIntent modificabili verso destinazioni generiche)
+        Intent view = new Intent(c, OpenEventActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         PendingIntent piView = PendingIntent.getActivity(c, 13, view,
                 PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         rv.setPendingIntentTemplate(R.id.list, piView);
