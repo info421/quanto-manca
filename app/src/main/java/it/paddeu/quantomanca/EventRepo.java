@@ -48,7 +48,6 @@ public final class EventRepo {
                 CalendarContract.Instances.STATUS,
                 CalendarContract.Instances.SELF_ATTENDEE_STATUS,
                 CalendarContract.Instances.OWNER_ACCOUNT,
-                CalendarContract.Instances.ACCOUNT_NAME,
                 CalendarContract.Instances.CALENDAR_DISPLAY_NAME,
                 CalendarContract.Instances.CALENDAR_ACCESS_LEVEL
         };
@@ -85,20 +84,19 @@ public final class EventRepo {
                 if (e.end <= now) continue;   // già finito
 
                 String owner = cur.isNull(8) ? "" : cur.getString(8);
-                String account = cur.isNull(9) ? "" : cur.getString(9);
-                String calName = cur.isNull(10) ? "" : cur.getString(10);
-                int access = cur.isNull(11) ? 0 : cur.getInt(11);
-                e.sharedWith = attendees(c, e.eventId, owner, account);
+                String calName = cur.isNull(9) ? "" : cur.getString(9);
+                int access = cur.isNull(10) ? 0 : cur.getInt(10);
+                e.sharedWith = attendees(c, e.eventId, owner);
                 if (!e.sharedWith.isEmpty()) {
                     e.sharedByAttendees = true;
-                } else if (isOthersCalendar(owner, account, access)) {
+                } else if (isOthersCalendar(owner, access)) {
                     e.sharedWith = calName.isEmpty() ? owner : calName;
                     e.sharedByAttendees = false;
                 }
                 out.add(e);
             }
-        } catch (SecurityException ignored) {
-            // permesso revocato nel frattempo
+        } catch (RuntimeException ignored) {
+            // permesso revocato o calendario non leggibile
         } finally {
             if (cur != null) cur.close();
         }
@@ -109,15 +107,14 @@ public final class EventRepo {
     }
 
     /** Calendario di un'altra persona (condiviso con te), escluse festività e calendari automatici. */
-    private static boolean isOthersCalendar(String owner, String account, int access) {
+    private static boolean isOthersCalendar(String owner, int access) {
         if (owner == null || owner.isEmpty()) return false;
-        if (owner.equalsIgnoreCase(account)) return false;
         if (owner.contains("#") || owner.endsWith("calendar.google.com")) return false;  // festività, compleanni…
         return access < CalendarContract.Calendars.CAL_ACCESS_OWNER;
     }
 
     /** Nomi degli invitati (te escluso): "Elisabetta, Marco +2". Vuoto se non ci sono altri. */
-    private static String attendees(Context c, long eventId, String owner, String account) {
+    private static String attendees(Context c, long eventId, String owner) {
         String[] proj = {
                 CalendarContract.Attendees.ATTENDEE_NAME,
                 CalendarContract.Attendees.ATTENDEE_EMAIL
@@ -130,7 +127,7 @@ public final class EventRepo {
             while (a.moveToNext()) {
                 String name = a.isNull(0) ? "" : a.getString(0).trim();
                 String mail = a.isNull(1) ? "" : a.getString(1).trim();
-                if (!mail.isEmpty() && (mail.equalsIgnoreCase(owner) || mail.equalsIgnoreCase(account))) continue;
+                if (!mail.isEmpty() && mail.equalsIgnoreCase(owner)) continue;
                 if (mail.endsWith("resource.calendar.google.com")) continue;   // sale, risorse
                 String shown;
                 if (!name.isEmpty()) shown = name.split("\\s+")[0];            // solo il nome
